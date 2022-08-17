@@ -15,16 +15,31 @@ from models.uniformer import (uniformer_base, uniformer_base_ls, uniformer_small
                             uniformer_small_plus, uniformer_small_plus_dim64)
 from convert_weights import convert
 
-mge_model = uniformer_small()
+# mge_model = uniformer_small(True)
+mge_model = uniformer_small_plus(True)
+# mge_model = uniformer_small_plus_dim64(True)
 
-torch_model = torch_uniformer_small()
+# torch_model = torch_uniformer_small()
+torch_model = torch_uniformer_small_plus()
+# torch_model = torch_uniformer_small_plus_dim64()
 
-# Can not download the weights automatically, so we need to convert state dict instead of loading trained weights.
+print()
+print("Can not download the torch weights automatically")
+print("So we need to convert state dict instead of loading trained weights.")
+print("Convert the state dict of torch to megengine...")
+
 state_dict = torch_model.state_dict()
 
 new_dict = convert(torch_model, state_dict)
+print("Convert down, load")
+print()
 
 mge_model.load_state_dict(new_dict)
+# torch_model.load_state_dict(torch.load('./image_classification/uniformer_small_in1k.pth', map_location='cpu')['model'])
+# torch_model.load_state_dict(torch.load('./image_classification/uniformer_small_plus_in1k.pth', map_location='cpu')) # no 'model'
+# torch_model.load_state_dict(torch.load('./image_classification/uniformer_small_plus_dim64_in1k.pth', map_location='cpu')['model'])
+
+# mge_model.load_state_dict(mge.load("./pretrained/uniformer_small_plus_dim64.pkl"))
 
 mge_model.eval()
 torch_model.eval()
@@ -45,7 +60,7 @@ def softmax(logits):
     exp = np.exp(logits)
     return exp / exp.sum(-1, keepdims=True)
 
-
+print("Begin testing")
 for i in range(15):
     results = []
     inp = np.random.randn(2, 3, 224, 224)
@@ -58,12 +73,10 @@ for i in range(15):
 
     st = time.time()
     mge_out = mge_model(mge_inp)
-    print(mge_out.shape)
     meg_time += time.time() - st
 
     st = time.time()
     torch_out = torch_model(torch_inp)
-    print(torch_out.shape)
     torch_time += time.time() - st
 
     if torch.cuda.is_available():

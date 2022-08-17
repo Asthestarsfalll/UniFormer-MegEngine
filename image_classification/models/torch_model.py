@@ -226,7 +226,8 @@ class UniFormer(nn.Module):
         super().__init__()
         self.num_classes = num_classes
         self.num_features = self.embed_dim = embed_dim  # num_features for consistency with other models
-        norm_layer = norm_layer or partial(nn.LayerNorm, eps=1e-6) 
+        norm_layer = norm_layer or partial(nn.LayerNorm, eps=1e-6)
+        self.conv_stem = conv_stem
         if conv_stem:
             self.patch_embed1 = head_embedding(in_channels=in_chans, out_channels=embed_dim[0])
             self.patch_embed2 = middle_embedding(in_channels=embed_dim[0], out_channels=embed_dim[1])

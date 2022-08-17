@@ -5,10 +5,11 @@ from functools import partial
 import megengine as mge
 import megengine.functional as F
 import megengine.module as M
+from megengine import hub
 from megengine.module import GELU, LayerNorm
 
-from .utils import DropPath, to_2tuple, trunc_normal, TanH
-from .vision_transformer import Attention, Mlp, LayerScale, PatchEmbed
+from .utils import DropPath, TanH, to_2tuple, trunc_normal
+from .vision_transformer import Attention, LayerScale, Mlp, PatchEmbed
 
 CMlp = partial(Mlp, fc_type=partial(M.Conv2d, kernel_size=1))
 
@@ -124,15 +125,14 @@ class head_embedding(M.Sequential):
             ),
             M.BatchNorm2d(out_channels),
         ]
-        super(head_embedding, self).__init__(proj)
+        super(head_embedding, self).__init__(*proj)
 
 
 class middle_embedding(M.Sequential):
     def __init__(self, in_channels, out_channels):
-
         proj = [
             M.Conv2d(
-                in_channels=out_channels,
+                in_channels=in_channels,
                 out_channels=out_channels,
                 kernel_size=3,
                 stride=2,
@@ -140,7 +140,7 @@ class middle_embedding(M.Sequential):
             ),
             M.BatchNorm2d(out_channels),
         ]
-        super(middle_embedding, self).__init__()
+        super(middle_embedding, self).__init__(*proj)
 
 
 class UniFormer(M.Module):
@@ -158,7 +158,7 @@ class UniFormer(M.Module):
         drop_rate=0., 
         attn_drop_rate=0., 
         drop_path_rate=0., 
-        norm_layer=partial(M.LayerNorm, eps=1e-6),
+        norm_layer=partial(LayerNorm, eps=1e-6),
         conv_stem=False,
     ):
         """
@@ -197,25 +197,29 @@ class UniFormer(M.Module):
                 patch_size=4, 
                 in_chans=in_chans, 
                 embed_dim=embed_dim[0], 
-                flatten=False)
+                flatten=True,
+                restore=True)
             self.patch_embed2 = PatchEmbed(
                 img_size=img_size // 4, 
                 patch_size=2, 
                 in_chans=embed_dim[0], 
                 embed_dim=embed_dim[1],
-                 flatten=False)
+                flatten=True,
+                restore=True)
             self.patch_embed3 = PatchEmbed(
                 img_size=img_size // 8, 
                 patch_size=2, 
                 in_chans=embed_dim[1],
                 embed_dim=embed_dim[2], 
-                flatten=False)
+                flatten=True,
+                restore=True)
             self.patch_embed4 = PatchEmbed(
                 img_size=img_size // 16, 
                 patch_size=2, 
                 in_chans=embed_dim[2], 
                 embed_dim=embed_dim[3], 
-                flatten=False)
+                flatten=True,
+                restore=True)
 
         self.pos_drop = M.Dropout(drop_rate)
         dpr = [x.item() for x in F.linspace(0, drop_path_rate,
@@ -332,6 +336,9 @@ class UniFormer(M.Module):
         return x
 
 
+@hub.pretrained(
+    "https://studio.brainpp.com/api/v1/activities/3/missions/45/files/ff52389f-16f8-4839-97ba-c5b0fadcfe64"
+)
 def uniformer_small(**kwargs):
     model = UniFormer(
         depth=[3, 4, 8, 3],
@@ -340,6 +347,9 @@ def uniformer_small(**kwargs):
     return model
 
 
+@hub.pretrained(
+    "https://studio.brainpp.com/api/v1/activities/3/missions/45/files/0f08456b-5b38-479e-9bbc-42a9762a91f7"
+)
 def uniformer_small_plus(**kwargs):
     model = UniFormer(
         depth=[3, 5, 9, 3], conv_stem=True,
@@ -348,6 +358,9 @@ def uniformer_small_plus(**kwargs):
     return model
 
 
+@hub.pretrained(
+    "https://studio.brainpp.com/api/v1/activities/3/missions/45/files/744f3496-cef8-4082-ad2d-7be981776ca1"
+)
 def uniformer_small_plus_dim64(**kwargs):
     model = UniFormer(
         depth=[3, 5, 9, 3], conv_stem=True,

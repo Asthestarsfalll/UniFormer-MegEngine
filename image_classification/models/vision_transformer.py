@@ -14,7 +14,8 @@ class PatchEmbed(M.Module):
         in_chans=3,
         embed_dim=768,
         norm_layer=LayerNorm,
-        flatten=True
+        flatten=True,
+        restore=True,
     ):
         super(PatchEmbed, self).__init__()
         img_size = to_2tuple(img_size)
@@ -25,6 +26,7 @@ class PatchEmbed(M.Module):
                           img_size[1] // patch_size[1])
         self.num_patches = self.grid_size[0] * self.grid_size[1]
         self.flatten = flatten
+        self.restore = restore
 
         self.proj = M.Conv2d(in_chans, embed_dim,
                              kernel_size=patch_size, stride=patch_size)
@@ -36,8 +38,12 @@ class PatchEmbed(M.Module):
             1], f'Input image size does not match, expected {self.img_size}, got {(H, W)}'
         x = self.proj(x)
         if self.flatten:
+            B, C, H, W = x.shape
             x = F.flatten(x, 2).transpose(0, 2, 1)  # BCHW -> BNC
         x = self.norm(x)
+        if self.restore:
+            x = x.reshape(B, H, W, -1).transpose((0, 3, 1, 2))  # BNC -> BHWC
+
         return x
 
 

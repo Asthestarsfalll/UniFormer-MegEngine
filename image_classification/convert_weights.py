@@ -32,6 +32,7 @@ def get_atttr_by_name(torch_module, k):
 
 def convert(torch_model, torch_dict):
     new_dict = {}
+    conv_stem = torch_model.conv_stem
     for k, v in torch_dict.items():
         data = v.numpy()
         sub_module = get_atttr_by_name(torch_model, k)
@@ -49,16 +50,23 @@ def convert(torch_model, torch_dict):
                 data = data.reshape(1, -1, 1, 1)
         if "num_batches_tracked" in k:
             continue
-        new_dict[k] = data
+        if conv_stem and "patch_embed" in k:
+            print(k, " -> ", k.replace('proj.', ''), "with shape: ", data.shape)
+            new_dict[k.replace('proj.', '')] = data
+        else:
+            new_dict[k] = data
     return new_dict
 
 
 def main(torch_name, torch_path):
-    torch_state_dict = torch.load(torch_path, map_location='cpu')['model']
+    torch_state_dict = torch.load(torch_path, map_location='cpu')
+    if torch_name in ["uniformer_small", "uniformer_small_plus_dim64"]:
+        torch_state_dict = torch_state_dict['model']
     torch_model = eval("torch_" + torch_name)()
-    model = eval(torch_name)()
+    torch_model.load_state_dict(torch_state_dict)
 
     new_dict = convert(torch_model, torch_state_dict)
+    model = eval(torch_name)()
 
     error = model.load_state_dict(new_dict)
     os.makedirs('pretrained', exist_ok=True)
@@ -71,14 +79,14 @@ if __name__ == "__main__":
         "-m",
         "--model",
         type=str,
-        default='uniformer_small',
+        default='uniformer_base',
         help=f"Path to torch saved model, default: uniformer_base, optional: uniformer_base_ls, uniformer_small, uniformer_small_plus, uniformer_small_plus_dim64",
     )
     parser.add_argument(
         "-d",
         "--dir",
         type=str,
-        default='./image_classification/uniformer_small_in1k.pth',
+        default=None,
         help=f"Path to torch saved model, default: None",
     )
     args = parser.parse_args()
